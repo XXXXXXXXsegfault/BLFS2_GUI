@@ -1,0 +1,71 @@
+.addr 0
+.dataaddr 0x100000
+.word 0x5a4d
+.offset 0x3c
+.long 0x80
+.offset 0x80
+.long 0x4550
+.word 0x8664 
+.word 2 
+.long 0 
+.long 0 
+.long 0 
+.word 0xa0
+.word 0x02 
+
+.word 0x20b
+.byte 0x02,0x14 
+.long @endc-@startc 
+.long 0,0 
+.long @entry-@image_base
+.long @startc-@image_base
+.quad @image_base
+.long 0x20 
+.long 0x20 
+.word 0,0
+.word 0,0
+.word 0,0
+.long 0
+.long @endr-@startr+@endc-@startc+0x200
+.long 0x200
+.long 0
+.word 10
+.word 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.long 0
+.long 6
+
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+.quad 0
+
+.string ".text"
+.byte 0,0
+.long @endc-@startc
+.long @startc-@image_base
+.long @endc-@startc
+.long @startc-@image_base+0x200
+.long 0,0
+.word 0,0
+.long 0x60000020
+.string ".reloc"
+.byte 0
+.long @endr-@startr
+.long @startr-@image_base
+.long @endr-@startr
+.long @startr-@image_base+0x200
+.long 0,0
+.word 0,0
+.long 0x42100040
+
+.offset 0x200
+.addr 0x200000
+@image_base
+.offset 0x400
+@startc
