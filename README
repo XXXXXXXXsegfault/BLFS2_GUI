@@ -1,0 +1,37 @@
+BLFS2_GUI -- A Simple Linux System with GUI for x86_64
+
+Building
+
+1. Build Linux 5.10.56 and Install Firmware
+
+This system is based on Linux 5.10.56. You should first download the Linux
+5.10.56 package and appropriate firmware package. Next, unpack them to the
+"src" directory, rename Linux source directory to "linux", rename firmware
+directory to "linux_firmware". Then switch to the "src" directory and run
+"./build_linux.sh" and "./install_firmware.sh".
+
+2. Build OpenSSL
+
+The https_get program needs OpenSSL to make SSL connection. Download the
+OpenSSL 1.1.1q package and unpack it to the "src" directory. Next, rename
+the OpenSSL source directory to openssl. Then switch to the "src" directory
+and run "./build_openssl.sh"
+
+3. Build SCC
+
+SCC is a simple C subset compiler. To build it, simply switch to the "scc"
+directory and enter "make".
+
+NOTE: There may be some bugs in SCC. You can modify the SCC source if needed.
+
+4. Switch to Root of BLFS2 Source and Enter "make"
+
+Installing (root required)
+
+NOTE: Installing this system will overwrite an entire disk.
+
+To install this system to your device, you should first switch to root of 
+BLFS2 source, then run "build/install.run YOUR_DEVICE [RootSize(MB)]". If
+your installation succeeds, it will print a "Success" message.
+
+

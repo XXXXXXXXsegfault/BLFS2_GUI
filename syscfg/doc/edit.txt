@@ -1,0 +1,53 @@
+"edit" -- A Text Editor.
+
+*Modes*
+
+"edit" has four modes: Normal, Insert, Select and Command.
+You can determine the current mode with the line at bottom.
+Normal mode is the initial mode of "edit". To switch back
+to normal mode from other modes, you can press the ESC key.
+
+In any modes except the command mode, you can move the
+cursor by pressing direction keys.
+
+In normal mode and select mode, character inputs will be
+interpreted as commands.
+
+In insert mode, typing a character will insert it into the
+text at the current cursor position, and pressing BACKSPACE
+will delete the character before the current cursor position.
+
+In select mode, you can select text for copy and cut 
+operations.
+
+In command mode, you can use some multi-character commands.
+After you type the full command, press ENTER to issue it.
+
+*Commands in Normal Mode*
+
+W (Shift+W) -- Save file
+NOTE: Click the "Exit" button will not save your changes.
+I -- Enter insert mode
+S -- Enter select mode
+> -- Enter command mode
+P -- Paste Clipboard
+U -- Undo
+R -- Redo
+f -- Search forward
+F -- Search backward
+NOTE: The last two commands search for the string which is
+previously searched using the f or F command in command mode.
+
+*Commands in Select Mode*
+
+C -- Copy the selected string to clipboard
+D -- Cut the selected string to clipboard
+NOTE: These commands also switch you back to normal mode.
+
+*Commands in Command Mode*
+
+ge -- Jump to end of file
+g<LINE> -- Jump to the line <LINE>
+f<STRING> -- search forward for string <STRING>
+F<STRING> -- search backward for string <STRING>
+NOTE: These commands cannot be longer than 47 characters.
