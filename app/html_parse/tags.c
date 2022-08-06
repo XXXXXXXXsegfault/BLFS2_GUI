@@ -15,7 +15,7 @@ struct token *parse_tag(struct token *tok,struct token *endt)
 {
 	struct token *end,*t;
 	char *text;
-	int s;
+	int s,s1;
 	if(!tok)
 	{
 		return NULL;
@@ -36,19 +36,17 @@ struct token *parse_tag(struct token *tok,struct token *endt)
 !strncmp(tok->str,"<em",4)||!strncmp(tok->str,"<strong",7)||
 !strncmp(tok->str,"<dfn",4)||!strncmp(tok->str,"<code",5)||
 !strncmp(tok->str,"<samp",5)||!strncmp(tok->str,"<kbd",4)||
-!strncmp(tok->str,"<div",4))
+!strncmp(tok->str,"<div",4)||!strncmp(tok->str,"<b>",3)||
+!strncmp(tok->str,"<i>",3)||!strncmp(tok->str,"<mark",5))
 	{
 		if(!strncmp(tok->str,"<form",5))
 		{
 			write(fdo,"FBEG",5);
 			write(fdo,"ACTN",5);
 			out_property(tok->str,"action");
-			s=1;
+			s1=1;
 		}
-		if(needs_newl(tok->str))
-		{
-			write(fdo,"NEWL",5);
-		}
+		s=needs_newl(tok->str);
 		end=locate_tag_end(tok);
 		if(!end)
 		{
@@ -71,9 +69,13 @@ struct token *parse_tag(struct token *tok,struct token *endt)
 				tok=parse_tag(tok,end);
 			}
 		}
-		if(s)
+		if(s1)
 		{
 			write(fdo,"FEND",5);
+		}
+		if(s)
+		{
+			write(fdo,"NEWL",5);
 		}
 		if(tok==endt)
 		{
@@ -87,10 +89,7 @@ struct token *parse_tag(struct token *tok,struct token *endt)
 !strncmp(tok->str,"<tr",3)||!strncmp(tok->str,"<main",5))
 	{
 		s=needs_newl(tok->str);
-		if(s)
-		{
-			write(fdo,"NEWL",5);
-		}
+
 		end=locate_tag_end(tok);
 		if(!end)
 		{
@@ -104,6 +103,10 @@ struct token *parse_tag(struct token *tok,struct token *endt)
 			{
 				tok=tok->next;
 			}
+		}
+		if(s)
+		{
+			write(fdo,"NEWL",5);
 		}
 		if(tok==endt)
 		{

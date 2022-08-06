@@ -12,6 +12,7 @@ unsigned int pbuf[WINW*WINH];
 int tmpfd;
 int current_y;
 char tmp_path[64];
+int loading;
 
 int init_tmp(void)
 {
@@ -33,38 +34,46 @@ int init_tmp(void)
 #include "pages.c"
 int T_change_path(void *arg)
 {
-	int x;
+	int x,n;
 	struct page page;
 	static char buf[65536];
+	loading=1;
 	mutex_lock(&page_lock);
 	strcpy(buf,input_buf);
-	if(!(page_load(buf,&page)&1))
+	n=0;
+	while(n<6)
 	{
-		if(!format_page(&page))
+		if(!(page_load(buf,&page)&1))
 		{
-			if(current_page==MAX_PAGES-1)
+			if(!format_page(&page))
 			{
-				page_release(pages);
-				memmove(pages,pages+1,(MAX_PAGES-1)*sizeof(struct page));
+				if(current_page==MAX_PAGES-1)
+				{
+					page_release(pages);
+					memmove(pages,pages+1,(MAX_PAGES-1)*sizeof(struct page));
+				}
+				else
+				{
+					++current_page;
+				}
+				x=current_page;
+				while(x<MAX_PAGES)
+				{
+					page_release(pages+x);
+					++x;
+				}
+				memcpy(pages+current_page,&page,sizeof(page));
+				num_pages=current_page+1;
+				n=6;
 			}
-			else
-			{
-				++current_page;
-			}
-			x=current_page;
-			while(x<MAX_PAGES)
-			{
-				page_release(pages+x);
-				++x;
-			}
-			memcpy(pages+current_page,&page,sizeof(page));
-			num_pages=current_page+1;
 		}
+		++n;
 	}
 	current_y=0;
 	mutex_unlock(&page_lock);
 	mode=0;
 	paint=1;
+	loading=0;
 	return 0;
 }
 void paint_all(void)
@@ -122,9 +131,12 @@ void event_handler(int type,int code,int x,int y)
 	}
 	if(type==WMEV_MOUSE_Z)
 	{
-		scroll_down(-code*16);
-		paint=1;
-		return;
+		if(!loading)
+		{
+			scroll_down(-code*16);
+			paint=1;
+			return;
+		}
 	}
 	if(type==GUIEV_LCLICK)
 	{
@@ -139,14 +151,14 @@ void event_handler(int type,int code,int x,int y)
 		}
 		else if(m_y<48)
 		{
-			if(mode==0)
+			if(mode==0&&!loading)
 			{
 				input_buf[0]=0;
 				mode=1;
 				paint=1;
 			}
 		}
-		else if(!mode)
+		else if(!mode&&!loading)
 		{
 			struct page_element *pe,*node,*fbeg;
 			int x1;
@@ -318,7 +330,7 @@ void event_handler(int type,int code,int x,int y)
 				}
 			}
 		}
-		else
+		else if(!loading)
 		{
 			if(code==14)
 			{
@@ -392,7 +404,7 @@ void event_handler(int type,int code,int x,int y)
 				create_lwp(1048576,T_change_path,0);
 			}
 		}
-		else if(mode==0)
+		else if(mode==0&&!loading)
 		{
 			mutex_lock(&page_lock);
 			if(current_input)

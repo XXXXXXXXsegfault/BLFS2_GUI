@@ -526,7 +526,7 @@ int main(void)
 		mod=modlist;
 		while(mod)
 		{
-			if(mod->load&&mod->dev)
+			if(mod->load)
 			{
 				if(!detect_dev(mod))
 				{

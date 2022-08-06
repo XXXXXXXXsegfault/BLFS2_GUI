@@ -73,7 +73,7 @@ int sock_init(void)
 	addr.sin_family=AF_INET;
 	addr.sin_port=htonw(80);
 	addr.sin_addr=server_addr;
-	alarm(5);
+	alarm(10);
 	if(connect(sockfd,&addr,sizeof(addr)))
 	{
 		close(sockfd);

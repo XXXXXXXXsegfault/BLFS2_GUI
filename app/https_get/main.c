@@ -66,7 +66,7 @@ int sock_init(void)
 	int pfds[4];
 	char buf[48];
 	char *argv[6];
-	alarm(5);
+	alarm(10);
 	if(socketpair(AF_UNIX,SOCK_STREAM,0,sockfds))
 	{
 		return 1;
