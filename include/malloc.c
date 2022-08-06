@@ -2,10 +2,8 @@
 #define _MALLOC_C_
 #include "syscall.c"
 #include "lock.c"
-#define MALLOC_MAGIC 0xacf33c0f
-#define MALLOC_TABLEN1 65537
-#define MALLOC_TABLEN2 3556543
-#define MALLOC_TABLEN3 15052907
+#define MALLOC_MAGIC 0xacf31e53
+#define MALLOC_TABLEN 65537
 unsigned long int __malloc_count_del;
 struct __malloc_zone
 {
@@ -55,8 +53,6 @@ struct __malloc_zone
 #include "templates/rbtree.c"
 char *__current_brk;
 unsigned long int __heap_size;
-unsigned int __total_malloc;
-unsigned int __mallocs;
 void *__set_heap_size(unsigned long int size)
 {
 	char *new_brk,*old_brk;
@@ -73,20 +69,8 @@ void *__set_heap_size(unsigned long int size)
 	__heap_size=size;
 	return old_brk;
 }
-unsigned long __get_malloc_tablen(void)
-{
-	if(__total_malloc<MALLOC_TABLEN1*8)
-	{
-		return MALLOC_TABLEN1;
-	}
-	if(__total_malloc<MALLOC_TABLEN2*32)
-	{
-		return MALLOC_TABLEN2;
-	}
-	return MALLOC_TABLEN3;
-}
-#define MALLOC_TABLEN __get_malloc_tablen()
-struct __malloc_zone *__malloc_start_tab[MALLOC_TABLEN3],*__malloc_end_tab[MALLOC_TABLEN3],*__malloc_zone_root;
+
+struct __malloc_zone *__malloc_start_tab[MALLOC_TABLEN],*__malloc_end_tab[MALLOC_TABLEN],*__malloc_zone_root;
 void __malloc_zone_start_tab_add(struct __malloc_zone *node)
 {
 	unsigned long long int addr;
@@ -125,7 +109,7 @@ struct __malloc_zone *__malloc_zone_start_tab_find(void *ptr)
 	int hash;
 	struct __malloc_zone *node;
 	addr=(unsigned long long int)ptr;
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN1;
+	hash=(addr>>16|addr<<48)%MALLOC_TABLEN;
 	node=__malloc_start_tab[hash];
 	while(node&&(unsigned long long int)node!=addr)
 	{
@@ -138,45 +122,7 @@ struct __malloc_zone *__malloc_zone_start_tab_find(void *ptr)
 			node=node->start_right;
 		}
 	}
-	if(node)
-	{
-		return node;
-	}
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN2;
-	node=__malloc_start_tab[hash];
-	while(node&&(unsigned long long int)node!=addr)
-	{
-		if((unsigned long long int)node>addr)
-		{
-			node=node->start_left;
-		}
-		else
-		{
-			node=node->start_right;
-		}
-	}
-	if(node)
-	{
-		return node;
-	}
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN3;
-	node=__malloc_start_tab[hash];
-	while(node&&(unsigned long long int)node!=addr)
-	{
-		if((unsigned long long int)node>addr)
-		{
-			node=node->start_left;
-		}
-		else
-		{
-			node=node->start_right;
-		}
-	}
-	if(node)
-	{
-		return node;
-	}
-	return NULL;
+	return node;
 }
 struct __malloc_zone *__malloc_zone_end_tab_find(void *ptr)
 {
@@ -184,7 +130,7 @@ struct __malloc_zone *__malloc_zone_end_tab_find(void *ptr)
 	int hash;
 	struct __malloc_zone *node;
 	addr=(unsigned long long int)ptr;
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN1;
+	hash=(addr>>16|addr<<48)%MALLOC_TABLEN;
 	node=__malloc_end_tab[hash];
 	while(node&&(unsigned long long int)node+node->size!=addr)
 	{
@@ -197,45 +143,7 @@ struct __malloc_zone *__malloc_zone_end_tab_find(void *ptr)
 			node=node->end_right;
 		}
 	}
-	if(node)
-	{
-		return node;
-	}
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN2;
-	node=__malloc_end_tab[hash];
-	while(node&&(unsigned long long int)node+node->size!=addr)
-	{
-		if((unsigned long long int)node+node->size>addr)
-		{
-			node=node->end_left;
-		}
-		else
-		{
-			node=node->end_right;
-		}
-	}
-	if(node)
-	{
-		return node;
-	}
-	hash=(addr>>16|addr<<48)%MALLOC_TABLEN3;
-	node=__malloc_end_tab[hash];
-	while(node&&(unsigned long long int)node+node->size!=addr)
-	{
-		if((unsigned long long int)node+node->size>addr)
-		{
-			node=node->end_left;
-		}
-		else
-		{
-			node=node->end_right;
-		}
-	}
-	if(node)
-	{
-		return node;
-	}
-	return NULL;
+	return node;
 }
 struct __malloc_zone *__malloc_zone_size_find(unsigned long long int size)
 {
@@ -290,7 +198,7 @@ void *malloc_nolock(unsigned long long int size)
 {
 	unsigned long long int size1,size2;
 	struct __malloc_zone *zone,*new_zone;
-	int hash,x;
+	int hash;
 	void *ret;
 	if(size==0)
 	{
@@ -301,12 +209,7 @@ void *malloc_nolock(unsigned long long int size)
 	zone=__malloc_zone_size_find(size1);
 	if(zone==0)
 	{
-		
-		if(size1<0x1000)
-		{
-			size2=0x4000;
-		}
-		else if(size1<0x8000)
+		if(size1<0x8000)
 		{
 			size2=0x200000;
 		}
@@ -317,16 +220,6 @@ void *malloc_nolock(unsigned long long int size)
 		else
 		{
 			size2=size1*8;
-		}
-		x=__total_malloc/128;
-		if(x>128)
-		{
-			x=128;
-		}
-		while(x)
-		{
-			size2=size2*5/4;
-			--x;
 		}
 		size2=(size2-1>>12)+1<<12;
 		if(!(zone=__set_heap_size(__heap_size+size2)))
@@ -359,11 +252,6 @@ void *malloc_nolock(unsigned long long int size)
 		zone->size=size1;
 	}
 	zone->used=1;
-	++__total_malloc;
-	if(__mallocs!=32)
-	{
-		++__mallocs;
-	}
 	return ret;
 }
 void _free(struct __malloc_zone *zone)
@@ -385,7 +273,7 @@ void _free(struct __malloc_zone *zone)
 		zone->size+=end->size;
 		__malloc_zone_add(zone);
 	}
-	if((char *)zone+zone->size==__current_brk+__heap_size&&zone->size>=16384&&!__mallocs)
+	if((char *)zone+zone->size==__current_brk+__heap_size&&zone->size>=16384)
 	{
 		__malloc_zone_del(zone);
 		__set_heap_size(__heap_size-zone->size);
@@ -401,14 +289,9 @@ void free_nolock(void *ptr)
 	zone=(void *)((char *)ptr-32);
 	if(zone->used!=1)
 	{
-		__malloc_error();	
+		__malloc_error();
 	}
 	_free(zone);
-	--__total_malloc;
-	if(__mallocs)
-	{
-		--__mallocs;
-	}
 }
 unsigned int __malloc_mutex;
 void *malloc(unsigned long int size)

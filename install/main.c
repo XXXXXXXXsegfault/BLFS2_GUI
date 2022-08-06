@@ -1,5 +1,6 @@
 #define _BUILD_INTERNAL_
 #include "../include/build.c"
+#include "../include/malloc.c"
 #include "../include/gpt.c"
 #include "../include/ioctl/loop.c"
 #include "../include/ioctl/termios.c"
@@ -162,6 +163,164 @@ void read_id(char *name)
 	read(fd,bootid,16);
 	close(fd);
 }
+int is_ko(char *name)
+{
+	int l;
+	if(!strcmp(name,"bzImage"))
+	{
+		return 1;
+	}
+	l=strlen(name);
+	if(l>3&&!memcmp(name+l-3,".ko",3))
+	{
+		return 1;
+	}
+	return 0;
+}
+void copy_ko(int dstfd,char *dst,int srcfd,char *src)
+{
+	struct stat st;
+	int fdi,fdo,n;
+	struct DIR db;
+	struct dirent *dir;
+	static char buf[131072];
+	if(fstatat(srcfd,src,&st,AT_SYMLINK_NOFOLLOW))
+	{
+		exit(20);
+	}
+	fdi=openat(srcfd,src,0,0);
+	if(fdi<0)
+	{
+		exit(21);
+	}
+	if((st.mode&0170000)==STAT_DIR)
+	{
+		mkdirat(dstfd,dst,0755);
+		fdo=openat(dstfd,dst,0,0);
+		if(fdo<0)
+		{
+			exit(22);
+		}
+		dir_init(fdi,&db);
+		while(dir=readdir(&db))
+		{
+			if(strcmp(dir->name,".")&&strcmp(dir->name,".."))
+			{
+				copy_ko(fdo,dir->name,fdi,dir->name);
+			}
+		}
+		close(fdo);
+		unlinkat(dstfd,dst,AT_REMOVEDIR);
+	}
+	else if((st.mode&0170000)==STAT_REG)
+	{
+		if(is_ko(src))
+		{
+			fdo=openat(dstfd,dst,577,0644);
+			if(fdo<0)
+			{
+				exit(23);
+			}
+			while((n=read(fdi,buf,131072))>0)
+			{
+				write(fdo,buf,n);
+			}
+			close(fdo);
+		}
+	}
+	close(fdi);
+}
+void _scan_ko(int modlist,char *path,int load)
+{
+	int fd;
+	int l;
+	struct DIR db;
+	struct dirent *dir;
+	struct stat st;
+	char *new_path;
+	if(lstat(path,&st))
+	{
+		exit(31);
+	}
+	if((st.mode&0170000)==STAT_DIR)
+	{
+		fd=open(path,0,0);
+		if(fd<0)
+		{
+			exit(32);
+		}
+		dir_init(fd,&db);
+		l=strlen(path);
+		new_path=malloc(l+264);
+		if(new_path==NULL)
+		{
+			exit(33);
+		}
+		memcpy(new_path,path,l);
+		while(dir=readdir(&db))
+		{
+			if(strcmp(dir->name,".")&&strcmp(dir->name,".."))
+			{
+				new_path[l]='/';
+				strcpy(new_path+l+1,dir->name);
+				if(!strcmp(dir->name,"hid")||!strcmp(dir->name,"drm")||!strcmp(dir->name,"ethernet")||!strcmp(dir->name,"usb"))
+				{
+					_scan_ko(modlist,new_path,1);
+				}
+				else if(!strcmp(dir->name,"phy"))
+				{
+					_scan_ko(modlist,new_path,2);
+				}
+				else
+				{
+					_scan_ko(modlist,new_path,load);
+				}
+			}
+		}
+		free(new_path);
+		close(fd);
+	}
+	else
+	{
+		l=strlen(path);
+		if(!memcmp(path+l-3,".ko",3))
+		{
+			if(!load)
+			{
+				if(write(modlist,"#",1)!=1)
+				{
+					exit(34);
+				}
+			}
+			else if(load==2)
+			{
+				if(write(modlist,"!",1)!=1)
+				{
+					exit(34);
+				}
+			}
+			if(write(modlist,path+9,l-9)!=l-9)
+			{
+				exit(34);
+			}
+			if(write(modlist,"\n",1)!=1)
+			{
+				exit(34);
+			}
+		}
+	}
+}
+void scan_ko(void)
+{
+	int modlist;
+	modlist=open("build/mnt/etc/modules",577,0644);
+	if(modlist<0)
+	{
+		exit(30);
+	}
+	_scan_ko(modlist,"build/mnt/src/src/linux",0);
+	close(modlist);
+}
 int main(int argc,char **argv)
 {
 	int status;
@@ -197,7 +356,7 @@ int main(int argc,char **argv)
 	}
 	sectors=devsize>>9;
 	root_size=sectors-36-ROOT_START&0xfffffffffffff800;
-	if(size*2048<root_size)
+	if(size*2048<root_size&&size)
 	{
 		root_size=size*2048;
 	}
@@ -265,7 +424,10 @@ int main(int argc,char **argv)
 	}
 	copy_file("build/root","build/mnt");
 	chmod("build/mnt/bin/su",04755);
-	copy_file("src/firmware/lib","build/mnt/lib");
+	copy_file("src/firmware","build/mnt/src/src/firmware");
+	symlink("../src/src/firmware/lib/firmware","build/mnt/lib/firmware");
+	copy_ko(AT_FDCWD,"build/mnt/src/src/linux",AT_FDCWD,"src/linux");
+	scan_ko();
 	mkdir("build/mnt/home",0700);
 	chown("build/mnt/home",4000,4000);
 	while(umount("build/mnt"));
